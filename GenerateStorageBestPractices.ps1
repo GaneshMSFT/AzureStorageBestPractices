@@ -305,9 +305,12 @@ function Generate-StorageAccountBestPractices {
             "<span class='status-indicator status-warning'>NULL/Unset</span>"
         }
 
+        # Create Azure Portal URL for storage account settings
+        $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+        
         # Output table row
         $row = "<tr>
-<td>$($account.StorageAccountName)</td>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
 <td>$($account.ResourceGroupName)</td>
 <td>$($account.Location)</td>
 <td>$allowBlobPublicAccessHtml</td>
@@ -538,6 +541,25 @@ function Generate-BlobServiceBestPractices {
             .legend { flex-direction: column; align-items: center; }
         }
         
+        /* Storage Account Link Styling */
+        td a {
+            color: #0078d4 !important;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        td a:hover {
+            color: #106ebe !important;
+            border-bottom: 1px solid #106ebe;
+            text-shadow: 0 1px 2px rgba(16, 110, 190, 0.3);
+        }
+        
+        td a:visited {
+            color: #0078d4 !important;
+        }
+        
         /* Print styles */
         @media print {
             body { background: white; }
@@ -675,9 +697,12 @@ function Generate-BlobServiceBestPractices {
                 "<span class='status-indicator status-warning'>DISABLED (Optional)</span>"
             }
 
+            # Create Azure Portal URL for storage account settings
+            $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+            
             # Output table row
             $row = "<tr>
-<td>$($account.StorageAccountName)</td>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
 <td>$($account.ResourceGroupName)</td>
 <td>$deleteRetentionHtml</td>
 <td>$deleteRetentionDaysHtml</td>
@@ -693,9 +718,12 @@ function Generate-BlobServiceBestPractices {
         } catch {
             Write-Warning "Failed to get blob service properties for storage account: $($account.StorageAccountName). Error: $($_.Exception.Message)"
             
+            # Create Azure Portal URL for storage account settings
+            $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+            
             # Output error row
             $errorRow = "<tr>
-<td>$($account.StorageAccountName)</td>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
 <td>$($account.ResourceGroupName)</td>
 <td colspan='8'><span class='status-indicator status-bad'>ERROR: Unable to retrieve blob service properties - $($_.Exception.Message)</span></td>
 </tr>"
@@ -912,6 +940,25 @@ function Generate-CombinedStorageBestPractices {
             h2 { font-size: 1.5em; }
             th, td { padding: 12px 8px; font-size: 0.8em; }
             .legend { flex-direction: column; align-items: center; }
+        }
+        
+        /* Storage Account Link Styling */
+        td a {
+            color: #0078d4 !important;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        td a:hover {
+            color: #106ebe !important;
+            border-bottom: 1px solid #106ebe;
+            text-shadow: 0 1px 2px rgba(16, 110, 190, 0.3);
+        }
+        
+        td a:visited {
+            color: #0078d4 !important;
         }
         
         /* Print styles */
