@@ -202,21 +202,25 @@ function Generate-StorageBestPracticesReport {
 
     # Start timer to measure execution efficiency
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $startTime = Get-Date
     
     Write-Host "🔄 Generating comprehensive Azure Storage Best Practices Report..." -ForegroundColor Cyan
     Write-Host "📋 This report includes both Storage Account and Blob Service best practices analysis" -ForegroundColor Cyan
-    Write-Host "⏱️  Timer started - measuring script execution efficiency..." -ForegroundColor Gray
+    Write-Host "⏱️  Started at: $($startTime.ToString('yyyy-MM-dd HH:mm:ss')) (Local Time)" -ForegroundColor Gray
     
     # Use the existing combined function
     Generate-CombinedStorageBestPractices -SubscriptionId $SubscriptionId -HtmlOutput $HtmlOutput
     
     # Stop timer and display results
     $stopwatch.Stop()
+    $endTime = Get-Date
     $elapsed = $stopwatch.Elapsed
     
     Write-Host ""
     Write-Host "⏱️  EXECUTION COMPLETED!" -ForegroundColor Green
-    Write-Host "📊 Total execution time: $($elapsed.Minutes):$($elapsed.Seconds.ToString('00')):$($elapsed.Milliseconds.ToString('000'))" -ForegroundColor Yellow
+    Write-Host "📅 Started:  $($startTime.ToString('yyyy-MM-dd HH:mm:ss')) (Local Time)" -ForegroundColor Yellow
+    Write-Host "📅 Finished: $($endTime.ToString('yyyy-MM-dd HH:mm:ss')) (Local Time)" -ForegroundColor Yellow
+    Write-Host "📊 Total execution time: $($elapsed.Minutes):$($elapsed.Seconds.ToString('00')):$($elapsed.Milliseconds.ToString('000'))" -ForegroundColor Cyan
     Write-Host "⚡ Script efficiency: Analyzed all storage accounts in $($elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Cyan
     if ($elapsed.TotalMinutes -lt 1) {
         Write-Host "🚀 Excellent performance! Completed in under 1 minute." -ForegroundColor Green
@@ -791,12 +795,14 @@ function Generate-CombinedStorageBestPractices {
         [string]$HtmlOutput = "CombinedStorageBestPractices.html"
     )
 
-    # Start timer to measure script execution time
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $startTime = Get-Date
-    
     Write-Host "🔄 Generating combined storage best practices analysis..." -ForegroundColor Cyan
-    Write-Host "⏱️  Started at: $($startTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
+
+    # Set subscription context and validate ONCE for the entire operation
+    if (-not (Set-SubscriptionContext -SubscriptionId $SubscriptionId)) { return }
+    
+    # Get and validate storage accounts ONCE for the entire operation
+    $storageAccounts = Get-ValidatedStorageAccounts -SubscriptionId $SubscriptionId
+    if (-not $storageAccounts) { return }
 
     # HTML document start and styles
     $htmlStart = @"
@@ -1059,11 +1065,11 @@ function Generate-CombinedStorageBestPractices {
     # Add Storage Account section
     "<div class='section'><h2>Storage Account Level Best Practices</h2><div class='table-container'>" | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
     
-    # Generate storage account recommendations and append to combined file
+    # Generate storage account recommendations using pre-retrieved accounts (no redundant calls)
     $tempAccountFile = "temp_account_bestpractices.html"
-    Generate-StorageAccountBestPractices -SubscriptionId $SubscriptionId -HtmlOutput $tempAccountFile
+    Generate-StorageAccountBestPracticesInternal -StorageAccounts $storageAccounts -SubscriptionId $SubscriptionId -HtmlOutput $tempAccountFile
     
-    # Read and append the table content (skip the header)
+    # Read and append the table content
     $accountContent = Get-Content $tempAccountFile -Raw
     $tableMatch = [regex]::Match($accountContent, '<table>.*?</table>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
     if ($tableMatch.Success) {
@@ -1076,11 +1082,11 @@ function Generate-CombinedStorageBestPractices {
     # Add Blob Service section
     "<div class='section'><h2>Blob Service Level Best Practices</h2><div class='table-container'>" | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
     
-    # Generate blob service recommendations and append to combined file
+    # Generate blob service recommendations using pre-retrieved accounts (no redundant calls)
     $tempBlobFile = "temp_blob_bestpractices.html"
-    Generate-BlobServiceBestPractices -SubscriptionId $SubscriptionId -HtmlOutput $tempBlobFile
+    Generate-BlobServiceBestPracticesInternal -StorageAccounts $storageAccounts -SubscriptionId $SubscriptionId -HtmlOutput $tempBlobFile
     
-    # Read and append the table content (skip the header and HTML structure)
+    # Read and append the table content
     $blobContent = Get-Content $tempBlobFile -Raw
     $blobTableMatch = [regex]::Match($blobContent, '<table>.*?</table>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
     if ($blobTableMatch.Success) {
@@ -1093,4 +1099,276 @@ function Generate-CombinedStorageBestPractices {
     
     Write-Host "🎉 Combined storage best practices analysis written to $HtmlOutput" -ForegroundColor Green
     Write-Host "📁 File location: $(Get-Location)\$HtmlOutput" -ForegroundColor Yellow
+}
+
+# Internal helper functions that work with pre-retrieved storage accounts (no redundant calls)
+function Generate-StorageAccountBestPracticesInternal {
+    param (
+        [Parameter(Mandatory=$true)]
+        [array]$StorageAccounts,
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [string]$HtmlOutput = "StorageAccountBestPractices.html"
+    )
+
+    # Table header
+    $header = @"
+<table>
+<thead>
+<tr>
+    <th>STORAGE ACCOUNT NAME</th>
+    <th>RESOURCE GROUP</th>
+    <th>LOCATION</th>
+    <th>allowBlobPublicAccess</th>
+    <th>allowSharedKeyAccess</th>
+    <th>enableHttpsTrafficOnly</th>
+    <th>minimumTlsVersion</th>
+    <th>networkRuleSet.defaultAction</th>
+    <th>publicNetworkAccess</th>
+</tr>
+</thead>
+<tbody>
+"@
+    $header | Out-File -FilePath $HtmlOutput -Encoding utf8
+
+    foreach ($account in $StorageAccounts) {
+        # Get detailed storage account information
+        $detailedAccount = Get-AzStorageAccount -ResourceGroupName $account.ResourceGroupName -Name $account.StorageAccountName
+        $props = $detailedAccount
+
+        # Extract properties - try different property paths
+        $allowBlobPublicAccess   = $props.AllowBlobPublicAccess
+        $allowSharedKeyAccess    = $props.AllowSharedKeyAccess
+        $enableHttpsTrafficOnly  = $props.EnableHttpsTrafficOnly
+        $minimumTlsVersion       = $props.MinimumTlsVersion
+        $networkRuleDefaultAction= $props.NetworkRuleSet.DefaultAction
+        $publicNetworkAccess     = $props.PublicNetworkAccess
+
+        # allowBlobPublicAccess: false is best practice
+        $allowBlobPublicAccessHtml = if ($allowBlobPublicAccess -eq $false) {
+            "<span class='status-indicator status-good'>FALSE (Best Practice)</span>"
+        } else {
+            "<span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/anonymous-read-access-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+        }
+
+        # allowSharedKeyAccess: false is best practice
+        $allowSharedKeyAccessHtml = if ($allowSharedKeyAccess -eq $false) {
+            "<span class='status-indicator status-good'>FALSE (Best Practice)</span>"
+        } elseif ($allowSharedKeyAccess -eq $true) {
+            "<span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+        } else {
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
+        }
+
+        # enableHttpsTrafficOnly: true is best practice
+        $enableHttpsTrafficOnlyHtml = if ($enableHttpsTrafficOnly -eq $true) {
+            "<span class='status-indicator status-good'>TRUE (Best Practice)</span>"
+        } else {
+            "<span class='status-indicator status-bad'>FALSE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-require-secure-transfer' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+        }
+
+        # minimumTlsVersion: TLS1_2 or higher is best practice
+        $minimumTlsVersionHtml = if ($null -eq $minimumTlsVersion) {
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
+        } elseif ($minimumTlsVersion -eq "TLS1_2" -or $minimumTlsVersion -eq "TLS1_3") {
+            "<span class='status-indicator status-good'>$minimumTlsVersion (Best Practice)</span>"
+        } else {
+            "<span class='status-indicator status-bad'>$minimumTlsVersion (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span>"
+        }
+
+        # networkRuleSet.defaultAction: Deny is best practice
+        $networkRuleDefaultActionHtml = if ($null -eq $networkRuleDefaultAction) {
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
+        } elseif ($networkRuleDefaultAction -eq "Deny") {
+            "<span class='status-indicator status-good'>Deny (Best Practice)</span>"
+        } else {
+            "<span class='status-indicator status-bad'>$networkRuleDefaultAction (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+        }
+
+        # publicNetworkAccess: Disabled is best practice
+        $publicNetworkAccessHtml = if ($publicNetworkAccess -eq "Disabled") {
+            "<span class='status-indicator status-good'>Disabled (Best Practice)</span>"
+        } elseif ($publicNetworkAccess -eq "Enabled") {
+            "<span class='status-indicator status-bad'>Enabled (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+        } else {
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
+        }
+
+        # Create Azure Portal URL for storage account settings
+        $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+        
+        # Output table row
+        $row = "<tr>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
+<td>$($account.ResourceGroupName)</td>
+<td>$($account.Location)</td>
+<td>$allowBlobPublicAccessHtml</td>
+<td>$allowSharedKeyAccessHtml</td>
+<td>$enableHttpsTrafficOnlyHtml</td>
+<td>$minimumTlsVersionHtml</td>
+<td>$networkRuleDefaultActionHtml</td>
+<td>$publicNetworkAccessHtml</td>
+</tr>"
+        $row | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
+    }
+
+    # Close table
+    "</tbody></table>" | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
+}
+
+function Generate-BlobServiceBestPracticesInternal {
+    param (
+        [Parameter(Mandatory=$true)]
+        [array]$StorageAccounts,
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [string]$HtmlOutput = "BlobServiceBestPractices.html"
+    )
+
+    # Generate table header only (no full HTML document)
+    $tableHeader = @"
+<table>
+<thead>
+<tr>
+    <th>STORAGE ACCOUNT NAME</th>
+    <th>RESOURCE GROUP</th>
+    <th>DELETE RETENTION ENABLED</th>
+    <th>DELETE RETENTION DAYS</th>
+    <th>CONTAINER DELETE RETENTION ENABLED</th>
+    <th>CONTAINER DELETE RETENTION DAYS</th>
+    <th>VERSIONING ENABLED</th>
+    <th>CHANGE FEED ENABLED</th>
+    <th>RESTORE POLICY ENABLED</th>
+    <th>LAST ACCESS TIME TRACKING</th>
+</tr>
+</thead>
+<tbody>
+"@
+    $tableHeader | Out-File -FilePath $HtmlOutput -Encoding utf8
+
+    foreach ($account in $StorageAccounts) {
+        try {
+            # Get blob service properties for each storage account
+            $blobServiceProps = Get-AzStorageBlobServiceProperty -ResourceGroupName $account.ResourceGroupName -StorageAccountName $account.StorageAccountName
+            
+            # Extract properties
+            $deleteRetentionEnabled = $blobServiceProps.DeleteRetentionPolicy.Enabled
+            $deleteRetentionDays = $blobServiceProps.DeleteRetentionPolicy.Days
+            $containerDeleteRetentionEnabled = $blobServiceProps.ContainerDeleteRetentionPolicy.Enabled
+            $containerDeleteRetentionDays = $blobServiceProps.ContainerDeleteRetentionPolicy.Days
+            $versioningEnabled = $blobServiceProps.IsVersioningEnabled
+            $changeFeedEnabled = $blobServiceProps.ChangeFeed.Enabled
+            $restorePolicyEnabled = $blobServiceProps.RestorePolicy.Enabled
+            $lastAccessTimeTracking = $blobServiceProps.LastAccessTimeTrackingPolicy.Enable
+
+            # Delete Retention Policy: enabled is best practice
+            $deleteRetentionHtml = if ($deleteRetentionEnabled -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
+            } else {
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+            }
+
+            # Delete Retention Days: 7+ days is recommended
+            $deleteRetentionDaysHtml = if ($deleteRetentionEnabled -eq $true) {
+                if ($deleteRetentionDays -ge 7) {
+                    "<span class='status-indicator status-good'>$deleteRetentionDays days (Best Practice)</span>"
+                } elseif ($deleteRetentionDays -gt 0) {
+                    "<span class='status-indicator status-warning'>$deleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider 7+ days</a>)</span>"
+                } else {
+                    "<span class='status-indicator status-bad'>$deleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: white; text-decoration: underline;'>Too Low - Fix Guide</a>)</span>"
+                }
+            } else {
+                "<span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span>"
+            }
+
+            # Container Delete Retention: enabled is best practice
+            $containerDeleteRetentionHtml = if ($containerDeleteRetentionEnabled -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
+            } else {
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+            }
+
+            # Container Delete Retention Days
+            $containerDeleteRetentionDaysHtml = if ($containerDeleteRetentionEnabled -eq $true) {
+                if ($containerDeleteRetentionDays -ge 7) {
+                    "<span class='status-indicator status-good'>$containerDeleteRetentionDays days (Best Practice)</span>"
+                } elseif ($containerDeleteRetentionDays -gt 0) {
+                    "<span class='status-indicator status-warning'>$containerDeleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider 7+ days</a>)</span>"
+                } else {
+                    "<span class='status-indicator status-warning'>Not Set (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
+                }
+            } else {
+                "<span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span>"
+            }
+
+            # Versioning: enabled is best practice
+            $versioningHtml = if ($versioningEnabled -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
+            } else {
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
+            }
+
+            # Change Feed: enabled is recommended for audit trails
+            $changeFeedHtml = if ($changeFeedEnabled -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
+            } elseif ($null -eq $changeFeedEnabled) {
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span>"
+            } else {
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span>"
+            }
+
+            # Restore Policy: enabled is recommended for critical data
+            $restorePolicyHtml = if ($restorePolicyEnabled -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
+            } elseif ($null -eq $restorePolicyEnabled) {
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span>"
+            } else {
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span>"
+            }
+
+            # Last Access Time Tracking: optional but useful for lifecycle management
+            $lastAccessTimeTrackingHtml = if ($lastAccessTimeTracking -eq $true) {
+                "<span class='status-indicator status-good'>ENABLED (Good for Lifecycle Management)</span>"
+            } elseif ($null -eq $lastAccessTimeTracking) {
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span>"
+            } else {
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span>"
+            }
+
+            # Create Azure Portal URL for storage account settings
+            $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+            
+            # Output table row
+            $row = "<tr>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
+<td>$($account.ResourceGroupName)</td>
+<td>$deleteRetentionHtml</td>
+<td>$deleteRetentionDaysHtml</td>
+<td>$containerDeleteRetentionHtml</td>
+<td>$containerDeleteRetentionDaysHtml</td>
+<td>$versioningHtml</td>
+<td>$changeFeedHtml</td>
+<td>$restorePolicyHtml</td>
+<td>$lastAccessTimeTrackingHtml</td>
+</tr>"
+            $row | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
+
+        } catch {
+            Write-Warning "Failed to get blob service properties for storage account: $($account.StorageAccountName). Error: $($_.Exception.Message)"
+            
+            # Create Azure Portal URL for storage account settings
+            $storageAccountUrl = "https://portal.azure.com/#@/resource/subscriptions/$SubscriptionId/resourceGroups/$($account.ResourceGroupName)/providers/Microsoft.Storage/storageAccounts/$($account.StorageAccountName)/configuration"
+            
+            # Output error row
+            $errorRow = "<tr>
+<td><a href='$storageAccountUrl' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>$($account.StorageAccountName)</a></td>
+<td>$($account.ResourceGroupName)</td>
+<td colspan='8'><span class='status-indicator status-bad'>ERROR: Unable to retrieve blob service properties - $($_.Exception.Message)</span></td>
+</tr>"
+            $errorRow | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
+        }
+    }
+
+    # Close table
+    "</tbody></table>" | Out-File -FilePath $HtmlOutput -Append -Encoding utf8
 }
