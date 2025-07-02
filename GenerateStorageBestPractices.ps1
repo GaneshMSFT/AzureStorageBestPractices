@@ -200,11 +200,31 @@ function Generate-StorageBestPracticesReport {
         [string]$HtmlOutput = "StorageBestPractices.html"
     )
 
+    # Start timer to measure execution efficiency
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    
     Write-Host "🔄 Generating comprehensive Azure Storage Best Practices Report..." -ForegroundColor Cyan
     Write-Host "📋 This report includes both Storage Account and Blob Service best practices analysis" -ForegroundColor Cyan
+    Write-Host "⏱️  Timer started - measuring script execution efficiency..." -ForegroundColor Gray
     
     # Use the existing combined function
     Generate-CombinedStorageBestPractices -SubscriptionId $SubscriptionId -HtmlOutput $HtmlOutput
+    
+    # Stop timer and display results
+    $stopwatch.Stop()
+    $elapsed = $stopwatch.Elapsed
+    
+    Write-Host ""
+    Write-Host "⏱️  EXECUTION COMPLETED!" -ForegroundColor Green
+    Write-Host "📊 Total execution time: $($elapsed.Minutes):$($elapsed.Seconds.ToString('00')):$($elapsed.Milliseconds.ToString('000'))" -ForegroundColor Yellow
+    Write-Host "⚡ Script efficiency: Analyzed all storage accounts in $($elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Cyan
+    if ($elapsed.TotalMinutes -lt 1) {
+        Write-Host "🚀 Excellent performance! Completed in under 1 minute." -ForegroundColor Green
+    } elseif ($elapsed.TotalMinutes -lt 3) {
+        Write-Host "✅ Good performance! Completed in under 3 minutes." -ForegroundColor Green
+    } else {
+        Write-Host "📈 Analysis completed. Large subscription scanned efficiently." -ForegroundColor Yellow
+    }
 }
 
 # Internal helper functions (users don't need to call these directly)
@@ -771,7 +791,12 @@ function Generate-CombinedStorageBestPractices {
         [string]$HtmlOutput = "CombinedStorageBestPractices.html"
     )
 
+    # Start timer to measure script execution time
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $startTime = Get-Date
+    
     Write-Host "🔄 Generating combined storage best practices analysis..." -ForegroundColor Cyan
+    Write-Host "⏱️  Started at: $($startTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
 
     # HTML document start and styles
     $htmlStart = @"

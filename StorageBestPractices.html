@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Azure Storage Best Practices Analysis</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #0078d4;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        h1:after {
+            content: '';
+            display: block;
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, #0078d4, #00bcf2);
+            margin: 20px auto;
+            border-radius: 2px;
+        }
+        
+        h2 {
+            color: #0078d4;
+            margin: 40px 0 20px 0;
+            font-size: 1.8em;
+            font-weight: 400;
+            padding-left: 15px;
+            border-left: 4px solid #0078d4;
+            background: linear-gradient(90deg, rgba(0, 120, 212, 0.1), transparent);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            background: rgba(248, 250, 254, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e0e6ed;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .legend-good { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); }
+        .legend-bad { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
+        .legend-warning { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+        
+        .section {
+            margin-bottom: 50px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e6ed;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e6ed;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+        }
+        
+        tr:hover {
+            background-color: #f8fafe;
+            transform: scale(1.001);
+            transition: all 0.3s ease;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #fafbfc;
+        }
+        
+        /* Status indicators with enhanced styling */
+        .status-indicator {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85em;
+            text-align: center;
+            display: inline-block;
+            min-width: 120px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-good {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: #2d5016;
+            box-shadow: 0 4px 8px rgba(86, 171, 47, 0.3);
+        }
+        
+        .status-bad {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            color: white;
+            box-shadow: 0 4px 8px rgba(255, 65, 108, 0.3);
+        }
+        
+        .status-warning {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #8b4513;
+            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.5em; }
+            th, td { padding: 12px 8px; font-size: 0.8em; }
+            .legend { flex-direction: column; align-items: center; }
+        }
+        
+        /* Storage Account Link Styling */
+        td a {
+            color: #0078d4 !important;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        td a:hover {
+            color: #106ebe !important;
+            border-bottom: 1px solid #106ebe;
+            text-shadow: 0 1px 2px rgba(16, 110, 190, 0.3);
+        }
+        
+        td a:visited {
+            color: #0078d4 !important;
+        }
+        
+        /* Documentation Link Styling */
+        .status-indicator a {
+            text-decoration: underline !important;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator a:hover {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .status-bad a {
+            color: white !important;
+        }
+        
+        .status-warning a {
+            color: #8b4513 !important;
+        }
+        
+        /* Print styles */
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+            .section { break-inside: avoid; }
+            table { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Azure Storage Best Practices Analysis</h1>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color legend-good"></div>
+                <span>Best Practice / Compliant</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color legend-bad"></div>
+                <span>Not Following Best Practice</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color legend-warning"></div>
+                <span>Review Required / Optional</span>
+            </div>
+        </div>
+<div class='section'><h2>Storage Account Level Best Practices</h2><div class='table-container'>
+<table>
+<thead>
+<tr>
+    <th>STORAGE ACCOUNT NAME</th>
+    <th>RESOURCE GROUP</th>
+    <th>LOCATION</th>
+    <th>allowBlobPublicAccess</th>
+    <th>allowSharedKeyAccess</th>
+    <th>enableHttpsTrafficOnly</th>
+    <th>minimumTlsVersion</th>
+    <th>networkRuleSet.defaultAction</th>
+    <th>publicNetworkAccess</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/bicep/providers/Microsoft.Storage/storageAccounts/jsrntb336z544/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>jsrntb336z544</a></td>
+<td>bicep</td>
+<td>eastus</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>TLS1_2 (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>Deny (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storage/providers/Microsoft.Storage/storageAccounts/ganeshacestrg/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>ganeshacestrg</a></td>
+<td>storage</td>
+<td>westus3</td>
+<td><span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/anonymous-read-access-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>TLS1_2 (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Enabled (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage104336/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage104336</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage1502/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage1502</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>TLS1_2 (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>Deny (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>Disabled (Best Practice)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage21232/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage21232</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage35724/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage35724</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage45908/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage45908</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage54240/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage54240</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage65301/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage65301</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage77567/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage77567</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage8912/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage8912</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage99489/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage99489</a></td>
+<td>storagescript</td>
+<td>westus3</td>
+<td><span class='status-indicator status-good'>FALSE (Best Practice)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>TRUE (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>TLS1_0 (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>Allow (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span></td>
+</tr>
+</tbody></table>
+</div></div>
+<div class='section'><h2>Blob Service Level Best Practices</h2><div class='table-container'>
+<table>
+            <thead>
+            <tr>
+                <th>STORAGE ACCOUNT NAME</th>
+                <th>RESOURCE GROUP</th>
+                <th>DELETE RETENTION ENABLED</th>
+                <th>DELETE RETENTION DAYS</th>
+                <th>CONTAINER DELETE RETENTION ENABLED</th>
+                <th>CONTAINER DELETE RETENTION DAYS</th>
+                <th>VERSIONING ENABLED</th>
+                <th>CHANGE FEED ENABLED</th>
+                <th>RESTORE POLICY ENABLED</th>
+                <th>LAST ACCESS TIME TRACKING</th>
+            </tr>
+            </thead>
+            <tbody>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/bicep/providers/Microsoft.Storage/storageAccounts/jsrntb336z544/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>jsrntb336z544</a></td>
+<td>bicep</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>9 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>10 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Good for Lifecycle Management)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storage/providers/Microsoft.Storage/storageAccounts/ganeshacestrg/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>ganeshacestrg</a></td>
+<td>storage</td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage104336/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage104336</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage1502/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage1502</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage21232/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage21232</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage35724/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage35724</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage45908/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage45908</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage54240/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage54240</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage65301/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage65301</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage77567/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage77567</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage8912/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage8912</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+<tr>
+<td><a href='https://portal.azure.com/#@/resource/subscriptions/31b79611-e2fb-4f0c-974a-cd06b24e030a/resourceGroups/storagescript/providers/Microsoft.Storage/storageAccounts/mystorage99489/configuration' target='_blank' style='color: #0078d4; text-decoration: none; font-weight: 600; border-bottom: 1px solid #0078d4;'>mystorage99489</a></td>
+<td>storagescript</td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>ENABLED (Best Practice)</span></td>
+<td><span class='status-indicator status-good'>7 days (Best Practice)</span></td>
+<td><span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span></td>
+<td><span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span></td>
+</tr>
+            </tbody>
+            </table>
+</div></div></div></body></html>
