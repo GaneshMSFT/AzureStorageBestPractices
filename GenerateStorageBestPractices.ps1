@@ -259,50 +259,50 @@ function Generate-StorageAccountBestPractices {
         $allowBlobPublicAccessHtml = if ($allowBlobPublicAccess -eq $false) {
             "<span class='status-indicator status-good'>FALSE (Best Practice)</span>"
         } else {
-            "<span class='status-indicator status-bad'>TRUE (Not Following Best Practice)</span>"
+            "<span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/anonymous-read-access-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
         }
 
         # allowSharedKeyAccess: false is best practice
         $allowSharedKeyAccessHtml = if ($allowSharedKeyAccess -eq $false) {
             "<span class='status-indicator status-good'>FALSE (Best Practice)</span>"
         } elseif ($allowSharedKeyAccess -eq $true) {
-            "<span class='status-indicator status-bad'>TRUE (Not Following Best Practice)</span>"
+            "<span class='status-indicator status-bad'>TRUE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
         } else {
-            "<span class='status-indicator status-warning'>NULL/Unset</span>"
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
         }
 
         # enableHttpsTrafficOnly: true is best practice
         $enableHttpsTrafficOnlyHtml = if ($enableHttpsTrafficOnly -eq $true) {
             "<span class='status-indicator status-good'>TRUE (Best Practice)</span>"
         } else {
-            "<span class='status-indicator status-bad'>FALSE (Not Following Best Practice)</span>"
+            "<span class='status-indicator status-bad'>FALSE (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-require-secure-transfer' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
         }
 
         # minimumTlsVersion: TLS1_2 or higher is best practice
         $minimumTlsVersionHtml = if ($null -eq $minimumTlsVersion) {
-            "<span class='status-indicator status-warning'>NULL/Unset</span>"
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
         } elseif ($minimumTlsVersion -eq "TLS1_2" -or $minimumTlsVersion -eq "TLS1_3") {
             "<span class='status-indicator status-good'>$minimumTlsVersion (Best Practice)</span>"
         } else {
-            "<span class='status-indicator status-bad'>$minimumTlsVersion (Upgrade Recommended)</span>"
+            "<span class='status-indicator status-bad'>$minimumTlsVersion (<a href='https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version' target='_blank' style='color: white; text-decoration: underline;'>Upgrade Guide</a>)</span>"
         }
 
         # networkRuleSet.defaultAction: Deny is best practice
         $networkRuleDefaultActionHtml = if ($null -eq $networkRuleDefaultAction) {
-            "<span class='status-indicator status-warning'>NULL/Unset</span>"
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
         } elseif ($networkRuleDefaultAction -eq "Deny") {
             "<span class='status-indicator status-good'>Deny (Best Practice)</span>"
         } else {
-            "<span class='status-indicator status-bad'>$networkRuleDefaultAction (Not Following Best Practice)</span>"
+            "<span class='status-indicator status-bad'>$networkRuleDefaultAction (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
         }
 
         # publicNetworkAccess: Disabled is best practice
         $publicNetworkAccessHtml = if ($publicNetworkAccess -eq "Disabled") {
             "<span class='status-indicator status-good'>Disabled (Best Practice)</span>"
         } elseif ($publicNetworkAccess -eq "Enabled") {
-            "<span class='status-indicator status-bad'>Enabled (Not Following Best Practice)</span>"
+            "<span class='status-indicator status-bad'>Enabled (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
         } else {
-            "<span class='status-indicator status-warning'>NULL/Unset</span>"
+            "<span class='status-indicator status-warning'>NULL/Unset (<a href='https://docs.microsoft.com/en-us/azure/storage/common/storage-network-security' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
         }
 
         # Create Azure Portal URL for storage account settings
@@ -560,6 +560,26 @@ function Generate-BlobServiceBestPractices {
             color: #0078d4 !important;
         }
         
+        /* Documentation Link Styling */
+        .status-indicator a {
+            text-decoration: underline !important;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator a:hover {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .status-bad a {
+            color: white !important;
+        }
+        
+        .status-warning a {
+            color: #8b4513 !important;
+        }
+        
         /* Print styles */
         @media print {
             body { background: white; }
@@ -627,7 +647,7 @@ function Generate-BlobServiceBestPractices {
             $deleteRetentionHtml = if ($deleteRetentionEnabled -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
             } else {
-                "<span class='status-indicator status-bad'>DISABLED (Not Following Best Practice)</span>"
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
             }
 
             # Delete Retention Days: 7+ days is recommended
@@ -635,19 +655,19 @@ function Generate-BlobServiceBestPractices {
                 if ($deleteRetentionDays -ge 7) {
                     "<span class='status-indicator status-good'>$deleteRetentionDays days (Best Practice)</span>"
                 } elseif ($deleteRetentionDays -gt 0) {
-                    "<span class='status-indicator status-warning'>$deleteRetentionDays days (Consider 7+ days)</span>"
+                    "<span class='status-indicator status-warning'>$deleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider 7+ days</a>)</span>"
                 } else {
-                    "<span class='status-indicator status-bad'>$deleteRetentionDays days (Too Low)</span>"
+                    "<span class='status-indicator status-bad'>$deleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: white; text-decoration: underline;'>Too Low - Fix Guide</a>)</span>"
                 }
             } else {
-                "<span class='status-indicator status-warning'>N/A (Retention Disabled)</span>"
+                "<span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span>"
             }
 
             # Container Delete Retention: enabled is best practice
             $containerDeleteRetentionHtml = if ($containerDeleteRetentionEnabled -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
             } else {
-                "<span class='status-indicator status-bad'>DISABLED (Not Following Best Practice)</span>"
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
             }
 
             # Container Delete Retention Days
@@ -655,46 +675,46 @@ function Generate-BlobServiceBestPractices {
                 if ($containerDeleteRetentionDays -ge 7) {
                     "<span class='status-indicator status-good'>$containerDeleteRetentionDays days (Best Practice)</span>"
                 } elseif ($containerDeleteRetentionDays -gt 0) {
-                    "<span class='status-indicator status-warning'>$containerDeleteRetentionDays days (Consider 7+ days)</span>"
+                    "<span class='status-indicator status-warning'>$containerDeleteRetentionDays days (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider 7+ days</a>)</span>"
                 } else {
-                    "<span class='status-indicator status-warning'>Not Set</span>"
+                    "<span class='status-indicator status-warning'>Not Set (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Configuration Guide</a>)</span>"
                 }
             } else {
-                "<span class='status-indicator status-warning'>N/A (Retention Disabled)</span>"
+                "<span class='status-indicator status-warning'>N/A (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/soft-delete-container-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Retention Disabled - Enable Guide</a>)</span>"
             }
 
             # Versioning: enabled is best practice
             $versioningHtml = if ($versioningEnabled -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
             } else {
-                "<span class='status-indicator status-bad'>DISABLED (Not Following Best Practice)</span>"
+                "<span class='status-indicator status-bad'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/versioning-overview' target='_blank' style='color: white; text-decoration: underline;'>Not Following Best Practice - Fix Guide</a>)</span>"
             }
 
             # Change Feed: enabled is recommended for audit trails
             $changeFeedHtml = if ($changeFeedEnabled -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
             } elseif ($null -eq $changeFeedEnabled) {
-                "<span class='status-indicator status-warning'>NOT SET (Consider Enabling)</span>"
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span>"
             } else {
-                "<span class='status-indicator status-warning'>DISABLED (Consider Enabling)</span>"
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-change-feed' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider Enabling - Guide</a>)</span>"
             }
 
             # Restore Policy: enabled is recommended for critical data
             $restorePolicyHtml = if ($restorePolicyEnabled -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Best Practice)</span>"
             } elseif ($null -eq $restorePolicyEnabled) {
-                "<span class='status-indicator status-warning'>NOT SET (Consider for Critical Data)</span>"
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span>"
             } else {
-                "<span class='status-indicator status-warning'>DISABLED (Consider for Critical Data)</span>"
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/point-in-time-restore-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Consider for Critical Data - Guide</a>)</span>"
             }
 
             # Last Access Time Tracking: optional but useful for lifecycle management
             $lastAccessTimeTrackingHtml = if ($lastAccessTimeTracking -eq $true) {
                 "<span class='status-indicator status-good'>ENABLED (Good for Lifecycle Management)</span>"
             } elseif ($null -eq $lastAccessTimeTracking) {
-                "<span class='status-indicator status-warning'>NOT SET (Optional)</span>"
+                "<span class='status-indicator status-warning'>NOT SET (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span>"
             } else {
-                "<span class='status-indicator status-warning'>DISABLED (Optional)</span>"
+                "<span class='status-indicator status-warning'>DISABLED (<a href='https://docs.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview' target='_blank' style='color: #8b4513; text-decoration: underline;'>Optional - Lifecycle Guide</a>)</span>"
             }
 
             # Create Azure Portal URL for storage account settings
@@ -959,6 +979,26 @@ function Generate-CombinedStorageBestPractices {
         
         td a:visited {
             color: #0078d4 !important;
+        }
+        
+        /* Documentation Link Styling */
+        .status-indicator a {
+            text-decoration: underline !important;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator a:hover {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .status-bad a {
+            color: white !important;
+        }
+        
+        .status-warning a {
+            color: #8b4513 !important;
         }
         
         /* Print styles */
