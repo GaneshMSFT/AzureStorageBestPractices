@@ -28,10 +28,10 @@ This PowerShell script analyzes Azure Storage Accounts and Blob Services for bes
 
 ### Step 2: Upload the Script
 **Option A - Copy/Paste Method (Recommended):**
-1. Copy the entire script content from `StorageBestPractices.ps1`
+1. Copy the entire script content from `GenerateStorageBestPractices.ps1`
 2. In Cloud Shell, create a new file:
    ```powershell
-   nano StorageBestPractices.ps1
+   nano GenerateStorageBestPractices.ps1
    ```
 3. Paste the content (Ctrl+V or right-click)
 4. Save and exit: `Ctrl+X`, then `Y`, then `Enter`
@@ -48,18 +48,18 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ### Step 4: Load the Script INTO YOUR SESSION ⚠️ CRITICAL STEP ⚠️
 ```powershell
-. ./StorageBestPractices.ps1
+. ./GenerateStorageBestPractices.ps1
 ```
 
 **🚨 CRITICAL: Notice the DOT (.) followed by a SPACE before the path!**
 
 This is called **"dot sourcing"** and is **ABSOLUTELY REQUIRED** to load the functions into your PowerShell session.
 
-- ❌ **WRONG**: `./StorageBestPractices.ps1` (runs script but doesn't load functions)
-- ❌ **WRONG**: `StorageBestPractices.ps1` (won't work at all)
-- ✅ **CORRECT**: `. ./StorageBestPractices.ps1` (dot + space + path loads functions)
+- ❌ **WRONG**: `./GenerateStorageBestPractices.ps1` (runs script but doesn't load functions)
+- ❌ **WRONG**: `GenerateStorageBestPractices.ps1` (won't work at all)
+- ✅ **CORRECT**: `. ./GenerateStorageBestPractices.ps1` (dot + space + path loads functions)
 
-**Without the dot and space, you'll get the error:** `"The term 'Generate-CombinedStorageBestPractices' is not recognized"`
+**Without the dot and space, you'll get the error:** `"The term 'Generate-StorageBestPracticesReport' is not recognized"`
 
 ### Step 5: Run the Analysis (One Simple Command!)
 ```powershell
@@ -73,7 +73,18 @@ Generate-StorageBestPracticesReport -SubscriptionId "your-subscription-id-here"
 - ✅ Create a comprehensive HTML report with both sections
 - ✅ Save the report as `StorageBestPractices.html`
 
-**📝 Note:** You no longer need to choose between different functions or manually set subscription context!
+**📝 Note:** The script automatically handles subscription context and provides comprehensive analysis in a single command!
+
+### Optional Parameters
+You can also use optional parameters for more control:
+
+```powershell
+# Generate report with detailed execution information
+Generate-StorageBestPracticesReport -SubscriptionId "your-subscription-id" -ShowDetails
+
+# Specify custom output file name
+Generate-StorageBestPracticesReport -SubscriptionId "your-subscription-id" -HtmlOutput "MyCustomReport.html"
+```
 
 ### Step 6: Download the Report
 1. Click the Upload/Download files icon in Cloud Shell toolbar
@@ -92,9 +103,9 @@ Generate-StorageBestPracticesReport -SubscriptionId "your-subscription-id-here"
 $subscriptionId = "12345678-1234-1234-1234-123456789012"
 
 # Load the script (DOT + SPACE + PATH - Critical!)
-. ./StorageBestPractices.ps1
+. ./GenerateStorageBestPractices.ps1
 
-# Generate comprehensive best practices report (subscription context is set automatically)
+# Generate comprehensive best practices report
 Generate-StorageBestPracticesReport -SubscriptionId $subscriptionId
 
 # Download the report file when complete
@@ -122,9 +133,9 @@ Generate-StorageBestPracticesReport -SubscriptionId $subscriptionId
 
 ### Common Issues and Solutions
 
-**❌ "The term 'Generate-CombinedStorageBestPractices' is not recognized"**
+**❌ "The term 'Generate-StorageBestPracticesReport' is not recognized"**
 - **Root Cause**: You forgot the dot sourcing step!
-- **Solution**: Run `. ./StorageBestPractices.ps1` (note the DOT + SPACE before the path)
+- **Solution**: Run `. ./GenerateStorageBestPractices.ps1` (note the DOT + SPACE before the path)
 - **Explanation**: Without dot sourcing, functions are not loaded into your PowerShell session
 
 **❌ "Access denied" errors**
