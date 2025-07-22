@@ -2,6 +2,8 @@
 # Azure Storage Best Practices Analysis Script
 # =============================================================================
 # 
+# Author: Ganesh Maddipudi
+# 
 # This script analyzes Azure Storage Accounts and Blob Services for 
 # best practices and generates HTML reports with color-coded recommendations.
 #
