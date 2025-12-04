@@ -1,12 +1,12 @@
-# Azure Storage Custom Policy: Audit and Enable Blob Soft Delete
+# Azure Storage Custom Policy: Audit and Enable Blob and Container Soft Delete
 
 **Author:** Ganesh Maddipudi
 
-This custom Azure Policy ensures that all Azure Storage Accounts have blob soft delete enabled with a configurable retention period. The policy uses a `deployIfNotExists` effect to automatically remediate non-compliant storage accounts.
+This custom Azure Policy ensures that all Azure Storage Accounts have both blob soft delete and container soft delete enabled with configurable retention periods. The policy uses a `deployIfNotExists` effect to automatically remediate non-compliant storage accounts.
 
 ## Overview
 
-**Policy Name:** Audit and enable Blob soft delete on Storage Accounts
+**Policy Name:** Audit and enable Blob and Container soft delete on Storage Accounts
 
 **Policy Type:** Custom
 
@@ -16,18 +16,20 @@ This custom Azure Policy ensures that all Azure Storage Accounts have blob soft 
 
 ## What This Policy Does
 
-- **Audits** all Storage Accounts in scope to check if blob soft delete is enabled
-- **Automatically remediates** non-compliant storage accounts by enabling soft delete
-- **Configurable retention period** (default: 7 days)
-- **Protects against accidental blob deletion** by retaining deleted blobs for the specified period
+- **Audits** all Storage Accounts in scope to check if both blob and container soft delete are enabled
+- **Marks as non-compliant** if either blob soft delete OR container soft delete is disabled
+- **Automatically remediates** non-compliant storage accounts by enabling both soft delete features
+- **Configurable retention periods** for both blobs and containers (default: 7 days each)
+- **Protects against accidental deletion** by retaining deleted blobs and containers for the specified periods
 
-## Why Enable Blob Soft Delete?
+## Why Enable Blob and Container Soft Delete?
 
-Blob soft delete is a critical data protection feature that:
-- ✅ Protects against accidental blob deletion
-- ✅ Allows recovery of deleted blobs within the retention period
+Soft delete for blobs and containers is a critical data protection feature that:
+- ✅ Protects against accidental blob and container deletion
+- ✅ Allows recovery of deleted blobs and containers within the retention period
+- ✅ Provides protection even if an entire container is deleted
 - ✅ Helps meet compliance and data governance requirements
-- ✅ Provides an additional layer of data protection
+- ✅ Provides comprehensive data protection at multiple levels
 
 ## Prerequisites
 
@@ -55,7 +57,7 @@ Blob soft delete is a critical data protection feature that:
    - Click **+ Policy definition** at the top
    - Fill in the form:
      - **Definition location**: Choose your subscription or management group
-     - **Name**: `audit-enable-blob-soft-delete`
+     - **Name**: `audit-enable-blob-container-soft-delete`
      - **Description**: Copy from the policy JSON
      - **Category**: Select **Storage** (or create new)
      - **Policy rule**: Copy and paste the entire content from `AuditBlobSoftDelete.json`
@@ -65,7 +67,7 @@ Blob soft delete is a critical data protection feature that:
 
 1. **Create Assignment**
    - Go back to **Policy** > **Definitions**
-   - Find your newly created policy `audit-enable-blob-soft-delete`
+   - Find your newly created policy `audit-enable-blob-container-soft-delete`
    - Click on it, then click **Assign**
 
 2. **Configure Assignment**
@@ -75,7 +77,11 @@ Blob soft delete is a critical data protection feature that:
      - **Policy enforcement**: Set to **Enabled**
    
    - **Parameters Tab:**
-     - **Retention days for soft delete**: Enter desired retention period (default: 7 days)
+     - **Retention days for blob soft delete**: Enter desired retention period (default: 7 days)
+       - Recommended: 7-30 days
+       - Minimum: 1 day
+       - Maximum: 365 days
+     - **Retention days for container soft delete**: Enter desired retention period (default: 7 days)
        - Recommended: 7-30 days
        - Minimum: 1 day
        - Maximum: 365 days
@@ -86,7 +92,7 @@ Blob soft delete is a critical data protection feature that:
      - **Managed Identity Location**: Select a region (same as your resources recommended)
    
    - **Non-compliance messages Tab:**
-     - Add a custom message (optional): "Blob soft delete must be enabled with minimum retention period."
+     - Add a custom message (optional): "Both blob and container soft delete must be enabled with minimum retention periods."
    
    - **Review + Create Tab:**
      - Review your settings
@@ -121,9 +127,9 @@ Set-AzContext -SubscriptionId "<your-subscription-id>"
 
 ```powershell
 # Define variables
-$policyName = "audit-enable-blob-soft-delete"
-$policyDisplayName = "Audit and enable Blob soft delete on Storage Accounts"
-$policyDescription = "Audits Storage Accounts to ensure Blob soft delete is enabled. If not, enables soft delete with a customizable retention period."
+$policyName = "audit-enable-blob-container-soft-delete"
+$policyDisplayName = "Audit and enable Blob and Container soft delete on Storage Accounts"
+$policyDescription = "Audits Storage Accounts to ensure both Blob and Container soft delete are enabled. If either is not enabled, marks the account as non-compliant and enables soft delete with customizable retention periods."
 $policyFilePath = ".\AuditBlobSoftDelete.json"
 
 # Create the policy definition
@@ -142,10 +148,11 @@ Write-Host "Policy Definition ID: $($policyDefinition.PolicyDefinitionId)"
 
 ```powershell
 # Define assignment variables
-$assignmentName = "assign-blob-soft-delete-policy"
-$assignmentDisplayName = "Enforce Blob Soft Delete on Storage Accounts"
+$assignmentName = "assign-blob-container-soft-delete-policy"
+$assignmentDisplayName = "Enforce Blob and Container Soft Delete on Storage Accounts"
 $scope = "/subscriptions/<your-subscription-id>"  # Or resource group scope
-$retentionDays = 7  # Customize as needed
+$blobRetentionDays = 7  # Customize as needed
+$containerRetentionDays = 7  # Customize as needed
 
 # Create policy assignment with managed identity
 $assignment = New-AzPolicyAssignment `
@@ -153,7 +160,10 @@ $assignment = New-AzPolicyAssignment `
     -DisplayName $assignmentDisplayName `
     -Scope $scope `
     -PolicyDefinition $policyDefinition `
-    -PolicyParameterObject @{ retentionDays = $retentionDays } `
+    -PolicyParameterObject @{ 
+        blobRetentionDays = $blobRetentionDays
+        containerRetentionDays = $containerRetentionDays
+    } `
     -IdentityType "SystemAssigned" `
     -Location "eastus"  # Change to your preferred region
 
@@ -184,7 +194,7 @@ Write-Host "Role assignment completed!" -ForegroundColor Green
 
 ```powershell
 # Create remediation task for existing non-compliant resources
-$remediationName = "remediate-blob-soft-delete-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$remediationName = "remediate-blob-container-soft-delete-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
 Start-AzPolicyRemediation `
     -Name $remediationName `
@@ -212,9 +222,9 @@ az account set --subscription "<your-subscription-id>"
 ```bash
 # Create the policy definition
 az policy definition create \
-    --name "audit-enable-blob-soft-delete" \
-    --display-name "Audit and enable Blob soft delete on Storage Accounts" \
-    --description "Audits Storage Accounts to ensure Blob soft delete is enabled." \
+    --name "audit-enable-blob-container-soft-delete" \
+    --display-name "Audit and enable Blob and Container soft delete on Storage Accounts" \
+    --description "Audits Storage Accounts to ensure both Blob and Container soft delete are enabled." \
     --rules AuditBlobSoftDelete.json \
     --mode Indexed
 
@@ -227,15 +237,16 @@ echo "Policy definition created successfully!"
 # Set variables
 SUBSCRIPTION_ID="<your-subscription-id>"
 SCOPE="/subscriptions/$SUBSCRIPTION_ID"
-RETENTION_DAYS=7
+BLOB_RETENTION_DAYS=7
+CONTAINER_RETENTION_DAYS=7
 
 # Create policy assignment with managed identity
 az policy assignment create \
-    --name "assign-blob-soft-delete-policy" \
-    --display-name "Enforce Blob Soft Delete on Storage Accounts" \
+    --name "assign-blob-container-soft-delete-policy" \
+    --display-name "Enforce Blob and Container Soft Delete on Storage Accounts" \
     --scope "$SCOPE" \
-    --policy "audit-enable-blob-soft-delete" \
-    --params "{\"retentionDays\":{\"value\":$RETENTION_DAYS}}" \
+    --policy "audit-enable-blob-container-soft-delete" \
+    --params "{\"blobRetentionDays\":{\"value\":$BLOB_RETENTION_DAYS},\"containerRetentionDays\":{\"value\":$CONTAINER_RETENTION_DAYS}}" \
     --assign-identity \
     --identity-scope "$SCOPE" \
     --location "eastus"
@@ -248,7 +259,7 @@ echo "Policy assigned successfully!"
 ```bash
 # Get the managed identity principal ID
 PRINCIPAL_ID=$(az policy assignment show \
-    --name "assign-blob-soft-delete-policy" \
+    --name "assign-blob-container-soft-delete-policy" \
     --scope "$SCOPE" \
     --query "identity.principalId" -o tsv)
 
@@ -272,8 +283,8 @@ echo "Role assignment completed!"
 ```bash
 # Create remediation task
 az policy remediation create \
-    --name "remediate-blob-soft-delete-$(date +%Y%m%d-%H%M%S)" \
-    --policy-assignment "assign-blob-soft-delete-policy" \
+    --name "remediate-blob-container-soft-delete-$(date +%Y%m%d-%H%M%S)" \
+    --policy-assignment "assign-blob-container-soft-delete-policy" \
     --scope "$SCOPE"
 
 echo "Remediation task started!"
@@ -286,15 +297,15 @@ echo "Remediation task started!"
 1. Navigate to **Policy** > **Compliance**
 2. Find your policy assignment
 3. Check the compliance state:
-   - **Compliant**: Storage accounts have soft delete enabled
-   - **Non-compliant**: Storage accounts need remediation
+   - **Compliant**: Storage accounts have both blob and container soft delete enabled
+   - **Non-compliant**: Storage accounts are missing either blob soft delete, container soft delete, or both
 4. Click on the policy to see detailed compliance data
 
 ### Via PowerShell
 
 ```powershell
 # Check policy compliance state
-$policyStates = Get-AzPolicyState -PolicyAssignmentName "assign-blob-soft-delete-policy"
+$policyStates = Get-AzPolicyState -PolicyAssignmentName "assign-blob-container-soft-delete-policy"
 
 # Display compliance summary
 $policyStates | Group-Object ComplianceState | Select-Object Name, Count
@@ -309,7 +320,7 @@ $policyStates | Where-Object { $_.ComplianceState -eq "NonCompliant" } |
 ```bash
 # Check policy compliance
 az policy state list \
-    --policy-assignment "assign-blob-soft-delete-policy" \
+    --policy-assignment "assign-blob-container-soft-delete-policy" \
     --query "[].{Resource:resourceId, State:complianceState}" \
     --output table
 ```
@@ -341,21 +352,24 @@ az policy remediation show \
 
 ### Adjust Retention Period
 
-You can modify the retention period when assigning the policy or update an existing assignment:
+You can modify the retention periods when assigning the policy or update an existing assignment:
 
 **PowerShell:**
 ```powershell
 Set-AzPolicyAssignment `
-    -Name "assign-blob-soft-delete-policy" `
+    -Name "assign-blob-container-soft-delete-policy" `
     -Scope $scope `
-    -PolicyParameterObject @{ retentionDays = 30 }  # Change to desired days
+    -PolicyParameterObject @{ 
+        blobRetentionDays = 30
+        containerRetentionDays = 30
+    }  # Change to desired days
 ```
 
 **Azure CLI:**
 ```bash
 az policy assignment update \
-    --name "assign-blob-soft-delete-policy" \
-    --params "{\"retentionDays\":{\"value\":30}}"
+    --name "assign-blob-container-soft-delete-policy" \
+    --params "{\"blobRetentionDays\":{\"value\":30},\"containerRetentionDays\":{\"value\":30}}"
 ```
 
 ### Apply to Specific Resource Groups
@@ -366,10 +380,13 @@ To scope the policy to specific resource groups:
 $rgScope = "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>"
 
 New-AzPolicyAssignment `
-    -Name "assign-blob-soft-delete-policy-rg" `
+    -Name "assign-blob-container-soft-delete-policy-rg" `
     -Scope $rgScope `
     -PolicyDefinition $policyDefinition `
-    -PolicyParameterObject @{ retentionDays = 7 } `
+    -PolicyParameterObject @{ 
+        blobRetentionDays = 7
+        containerRetentionDays = 7
+    } `
     -IdentityType "SystemAssigned" `
     -Location "eastus"
 ```
@@ -401,7 +418,7 @@ New-AzPolicyAssignment `
 **Solution:**
 ```powershell
 # Re-assign the role to managed identity
-$assignment = Get-AzPolicyAssignment -Name "assign-blob-soft-delete-policy" -Scope $scope
+$assignment = Get-AzPolicyAssignment -Name "assign-blob-container-soft-delete-policy" -Scope $scope
 $principalId = $assignment.Identity.PrincipalId
 
 New-AzRoleAssignment `
@@ -425,7 +442,7 @@ New-AzRoleAssignment `
 **PowerShell:**
 ```powershell
 # Get policy events for troubleshooting
-Get-AzPolicyEvent -PolicyAssignmentName "assign-blob-soft-delete-policy" | 
+Get-AzPolicyEvent -PolicyAssignmentName "assign-blob-container-soft-delete-policy" | 
     Select-Object Timestamp, ResourceId, ComplianceState, PolicyDefinitionAction |
     Format-Table
 ```
@@ -433,7 +450,7 @@ Get-AzPolicyEvent -PolicyAssignmentName "assign-blob-soft-delete-policy" |
 **Azure CLI:**
 ```bash
 az policy event list \
-    --policy-assignment "assign-blob-soft-delete-policy" \
+    --policy-assignment "assign-blob-container-soft-delete-policy" \
     --output table
 ```
 
@@ -443,13 +460,13 @@ az policy event list \
 
 **PowerShell:**
 ```powershell
-Remove-AzPolicyAssignment -Name "assign-blob-soft-delete-policy" -Scope $scope
+Remove-AzPolicyAssignment -Name "assign-blob-container-soft-delete-policy" -Scope $scope
 ```
 
 **Azure CLI:**
 ```bash
 az policy assignment delete \
-    --name "assign-blob-soft-delete-policy" \
+    --name "assign-blob-container-soft-delete-policy" \
     --scope "$SCOPE"
 ```
 
@@ -457,12 +474,12 @@ az policy assignment delete \
 
 **PowerShell:**
 ```powershell
-Remove-AzPolicyDefinition -Name "audit-enable-blob-soft-delete"
+Remove-AzPolicyDefinition -Name "audit-enable-blob-container-soft-delete"
 ```
 
 **Azure CLI:**
 ```bash
-az policy definition delete --name "audit-enable-blob-soft-delete"
+az policy definition delete --name "audit-enable-blob-container-soft-delete"
 ```
 
 ## Best Practices
@@ -490,6 +507,6 @@ For issues, questions, or contributions:
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** November 2025  
+**Version:** 2.0  
+**Last Updated:** December 2025  
 **Tested With:** Azure Policy API Version 2022-09-01
